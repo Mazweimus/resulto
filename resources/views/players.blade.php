@@ -1,1 +1,1 @@
-<x-sidebar/>
+@include('players.index')

@@ -130,6 +130,86 @@ class TournamentController extends Controller
                 ->with('success', "Turnaj \"{$tournament->name}\" byl úspěšně vytvořen. Nyní můžete v pavouku interaktivně nasadit hráče do jednotlivých slotů.");
         }
 
+        // Skupinový formát: Inline vytváření skupin
+        if ($format === 'groups') {
+            $groupsData = $request->input('groups', []);
+            $playerIds = $request->input('player_ids', $request->input('players', []));
+            $groupsCount = (int) ($request->input('groups_count') ?? 2);
+
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:150'],
+                'date' => ['nullable', 'date'],
+                'counts_for_ranking' => ['nullable', 'boolean'],
+                'season_year' => ['nullable', 'integer', 'min:2020', 'max:2100'],
+                'best_of_legs' => ['nullable', 'integer', 'min:1', 'max:35'],
+                'groups' => ['nullable', 'array'],
+                'player_ids' => ['nullable', 'array'],
+                'players' => ['nullable', 'array'],
+            ], [
+                'name.required' => 'Zadejte prosím název turnaje.',
+                'season_year.min' => 'Ročník turnaje musí být od roku 2020.',
+                'season_year.max' => 'Ročník turnaje může být maximálně do roku 2100.',
+            ]);
+
+            $tournamentDate = $validated['date'] ?? now()->toDateString();
+            $seasonYear = $request->filled('season_year')
+                ? (int) $request->input('season_year')
+                : (!empty($tournamentDate) ? (int) date('Y', strtotime($tournamentDate)) : (int) date('Y'));
+            $countsForRanking = $request->has('counts_for_ranking') ? $request->boolean('counts_for_ranking') : true;
+
+            try {
+                $groupService = app(\App\Services\TournamentGroupService::class);
+
+                // Pokud groups nebyly odeslány, ale máme player_ids, vygenerujeme je automaticky
+                if (empty($groupsData) && !empty($playerIds)) {
+                    $groupsData = $groupService->generateGroups($playerIds, $groupsCount);
+                }
+
+                if (empty($groupsData)) {
+                    return back()->withInput()->with('error', 'Při zakládání turnaje se skupinami musíte vybrat hráče a rozlosovat je do skupin.');
+                }
+
+                // Validace konfigurace skupin
+                $groupService->validateGroupConfiguration($groupsData);
+
+                $tournament = Tournament::create([
+                    'name' => $validated['name'],
+                    'date' => $tournamentDate,
+                    'status' => 'ongoing',
+                    'game_mode' => '501',
+                    'checkout_mode' => 'double_out',
+                    'format' => 'groups',
+                    'counts_for_ranking' => $countsForRanking,
+                    'season_year' => $seasonYear,
+                    'best_of_legs' => $validated['best_of_legs'] ?? 3,
+                ]);
+
+                $groupService->saveTournamentWithGroups($tournament, $groupsData, true);
+
+                $message = "Turnaj \"{$tournament->name}\" byl úspěšně vytvořen a zápasy ve skupinách byly rozlosovány!";
+
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'redirect_url' => route('tournaments.show', $tournament->id),
+                        'tournament_id' => $tournament->id,
+                    ]);
+                }
+
+                return redirect()->route('tournaments.show', $tournament->id)
+                    ->with('success', $message);
+            } catch (\InvalidArgumentException $e) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                    ], 422);
+                }
+                return back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
         // Standardní formáty (Double Elimination): Vyžaduje výběr hráčů
         if (!$request->has('player_ids') && $request->has('players')) {
             $request->merge(['player_ids' => $request->input('players')]);
@@ -289,6 +369,9 @@ class TournamentController extends Controller
      */
     public function show(Tournament $tournament)
     {
+        if ($tournament->format === 'groups') {
+            return redirect()->route('tournaments.groups.show', $tournament->id);
+        }
         return $this->renderTournamentView($tournament, 'tournaments.show');
     }
 
@@ -297,6 +380,9 @@ class TournamentController extends Controller
      */
     public function play(Tournament $tournament)
     {
+        if ($tournament->format === 'groups') {
+            return redirect()->route('tournaments.groups.show', $tournament->id);
+        }
         return $this->renderTournamentView($tournament, 'tournaments.play');
     }
 

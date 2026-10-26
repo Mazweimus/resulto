@@ -138,6 +138,19 @@ class Tournament extends Model
             ->orderBy('match_number');
     }
 
+    public function groups(): HasMany
+    {
+        return $this->hasMany(TournamentGroup::class)->orderBy('order');
+    }
+
+    public function groupMatches(): HasMany
+    {
+        return $this->hasMany(GameMatch::class)
+            ->whereNotNull('tournament_group_id')
+            ->orderBy('round')
+            ->orderBy('match_number');
+    }
+
     public function standings(): HasMany
     {
         return $this->hasMany(TournamentStanding::class)->orderBy('rank_from');

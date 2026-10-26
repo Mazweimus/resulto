@@ -12,7 +12,8 @@ class GameMatch extends Model
 
     protected $fillable = [
         'tournament_id',
-        'bracket_type', // 'winners', 'losers', 'grand_final'
+        'tournament_group_id',
+        'bracket_type', // 'winners', 'losers', 'grand_final', 'group'
         'round',
         'round_name',
         'match_number',
@@ -45,6 +46,16 @@ class GameMatch extends Model
     public function tournament(): BelongsTo
     {
         return $this->belongsTo(Tournament::class);
+    }
+
+    public function tournamentGroup(): BelongsTo
+    {
+        return $this->belongsTo(TournamentGroup::class, 'tournament_group_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->tournamentGroup();
     }
 
     public function player1(): BelongsTo
@@ -80,12 +91,14 @@ class GameMatch extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         if ($this->is_bye) {
-            return 'badge-gradient-info';
+            return 'bg-info text-white';
         }
 
         return match ($this->status) {
-            'completed' => 'badge-gradient-success',
-            default => 'badge-gradient-secondary',
+            'completed' => 'bg-success text-white',
+            'in_progress' => 'bg-warning text-dark',
+            'pending', 'scheduled' => 'bg-secondary text-white',
+            default => 'bg-secondary text-white',
         };
     }
 
@@ -97,7 +110,9 @@ class GameMatch extends Model
 
         return match ($this->status) {
             'completed' => 'Odehráno',
-            default => 'Čeká',
+            'in_progress' => 'Právě se hraje',
+            'pending', 'scheduled' => 'Připravuje se',
+            default => 'Připravuje se',
         };
     }
 

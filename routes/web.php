@@ -6,6 +6,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\TournamentController;
+use App\Http\Controllers\TournamentGroupController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -16,6 +17,10 @@ Route::get('/main', function () {
 
 // Tournaments / Turnaje
 Route::get('/tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
+Route::get('/tournaments/groups/create', [TournamentGroupController::class, 'create'])->name('tournaments.groups.create');
+Route::post('/tournaments/groups/draw', [TournamentGroupController::class, 'draw'])->name('tournaments.groups.draw');
+Route::post('/tournaments/groups', [TournamentGroupController::class, 'store'])->name('tournaments.groups.store');
+Route::get('/tournaments/{tournament}/groups', [TournamentGroupController::class, 'show'])->name('tournaments.groups.show');
 Route::get('/tournaments/create', [TournamentController::class, 'create'])->name('tournaments.create');
 Route::post('/tournaments', [TournamentController::class, 'store'])->name('tournaments.store');
 Route::get('/tournaments/{tournament}/play', [TournamentController::class, 'play'])->name('tournaments.play');

@@ -27,6 +27,26 @@ class Player extends Model
             ->withTimestamps();
     }
 
+    public function tournamentGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(TournamentGroup::class, 'tournament_group_players')
+            ->withPivot([
+                'seed',
+                'points',
+                'matches_played',
+                'matches_won',
+                'matches_lost',
+                'legs_won',
+                'legs_lost',
+            ])
+            ->withTimestamps();
+    }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->tournamentGroups();
+    }
+
     public function tournamentStandings(): HasMany
     {
         return $this->hasMany(TournamentStanding::class);

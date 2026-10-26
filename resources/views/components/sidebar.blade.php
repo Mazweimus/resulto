@@ -40,6 +40,11 @@
               <i class="mdi mdi-plus-circle-outline me-1"></i> Vytvořit turnaj
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {{ request()->is('tournaments/groups/create') ? 'active' : '' }}" href="{{ route('tournaments.groups.create') }}">
+              <i class="mdi mdi-view-grid-plus me-1"></i> Turnaj se skupinami
+            </a>
+          </li>
         </ul>
       </div>
     </li>

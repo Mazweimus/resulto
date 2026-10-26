@@ -26,7 +26,10 @@
                         <h4 class="card-title mb-1">Evidence turnajů (Double Elimination)</h4>
                         <p class="card-description mb-0">Přehled aktivních a odehraných turnajů s vyhodnocením pódia</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('tournaments.groups.create') }}" class="btn btn-outline-primary">
+                            <i class="mdi mdi-view-grid-plus me-1"></i> Skupinový turnaj
+                        </a>
                         <a href="{{ route('tournaments.create') }}" class="btn btn-gradient-primary">
                             <i class="mdi mdi-plus-circle me-1"></i> Založit nový turnaj
                         </a>
@@ -97,9 +100,15 @@
                                         <a href="{{ route('tournaments.edit', $t->id) }}" class="btn btn-outline-primary btn-sm p-1 px-2" title="Upravit turnaj">
                                             <i class="mdi mdi-pencil"></i>
                                         </a>
-                                        <a href="{{ route('tournaments.play', $t->id) }}" class="btn btn-gradient-primary btn-sm">
-                                            <i class="mdi mdi-sitemap me-1"></i> Pavouk / Zápasy
-                                        </a>
+                                        @if($t->format === 'groups')
+                                            <a href="{{ route('tournaments.groups.show', $t->id) }}" class="btn btn-gradient-info btn-sm">
+                                                <i class="mdi mdi-view-grid me-1"></i> Skupiny / Zápasy
+                                            </a>
+                                        @else
+                                            <a href="{{ route('tournaments.play', $t->id) }}" class="btn btn-gradient-primary btn-sm">
+                                                <i class="mdi mdi-sitemap me-1"></i> Pavouk / Zápasy
+                                            </a>
+                                        @endif
                                         <form action="{{ route('tournaments.destroy', $t->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Opravdu chcete smazat turnaj {{ $t->name }}?');">
                                             @csrf
                                             @method('DELETE')

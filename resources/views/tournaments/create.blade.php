@@ -70,6 +70,29 @@
         opacity: 1;
         transform: scale(1.1);
     }
+
+    /* Styly pro Inline Group Builder */
+    .inline-player-chip {
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        user-select: none;
+    }
+    .inline-player-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+    }
+    .inline-player-chip.is-dragging {
+        opacity: 0.35;
+    }
+    .group-dropzone {
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        border: 2px dashed transparent;
+        border-radius: 8px;
+        min-height: 100px;
+    }
+    .group-dropzone.drag-over {
+        background-color: #f3ecff !important;
+        border-color: #b66dff !important;
+    }
 </style>
 @endpush
 
@@ -87,6 +110,11 @@
             <li class="breadcrumb-item active" aria-current="page">Nový turnaj</li>
         </ul>
     </nav>
+    <div>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-switch-to-groups">
+            <i class="mdi mdi-view-grid-plus me-1"></i> Nastavit turnaj se skupinami
+        </button>
+    </div>
 </div>
 
 <div class="row">
@@ -100,6 +128,8 @@
                     @csrf
                     {{-- Dynamicky generované skryté inputy s ID vybraných hráčů --}}
                     <div id="hidden-player-inputs"></div>
+                    {{-- Dynamicky generované skryté inputy pro skupiny --}}
+                    <div id="hidden-groups-inputs"></div>
 
                     <div class="row g-3 align-items-center">
                         <div class="col-md-7">
@@ -219,6 +249,73 @@
                         <button type="submit" form="tournament-form" class="btn btn-gradient-success btn-lg fw-bold px-4" id="btn-submit-free-direct">
                             <i class="mdi mdi-play-circle-outline me-1"></i> Vytvořit turnaj a přejít k nasazení
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- SEKCE PRO ROZLOSOVÁNÍ DO ZÁKLADNÍCH SKUPIN (INLINE GROUP BUILDER) --}}
+        <div id="groups-configuration-section" class="card mb-3 shadow-sm border border-primary border-1 {{ old('format') === 'groups' ? '' : 'd-none' }}">
+            <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-primary text-white p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="mdi mdi-view-grid fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title text-primary fw-bold mb-0">Základní skupiny turnaje</h5>
+                        <small class="text-muted">Vyberte hráče níže v tabulce, zvolte počet skupin a proveďte náhodný los s možností ručních úprav.</small>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge bg-light text-dark border px-2 py-1" id="inline-groups-count-badge">
+                        Vybráno do skupin: 0 hráčů
+                    </span>
+                </div>
+            </div>
+            <div class="card-body py-3">
+                {{-- Ovládací panel rozlosování --}}
+                <div class="row g-2 align-items-center pb-3 border-bottom mb-3">
+                    <div class="col-sm-5 col-md-4">
+                        <label for="inline-groups-count" class="form-label fw-bold text-dark mb-1" style="font-size: 0.85rem;">
+                            Počet skupin:
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="mdi mdi-view-grid-outline text-primary"></i></span>
+                            <select id="inline-groups-count" name="groups_count" class="form-select">
+                                <option value="2" selected>2 skupiny (A, B)</option>
+                                <option value="3">3 skupiny (A, B, C)</option>
+                                <option value="4">4 skupiny (A, B, C, D)</option>
+                                <option value="5">5 skupin (A–E)</option>
+                                <option value="6">6 skupin (A–F)</option>
+                                <option value="7">7 skupin (A–G)</option>
+                                <option value="8">8 skupin (A–H)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-7 col-md-8 pt-sm-4 d-flex gap-2">
+                        <button type="button" class="btn btn-gradient-primary fw-bold flex-grow-1 py-2" id="btn-inline-draw">
+                            <i class="mdi mdi-dice-multiple me-1"></i> Rozlosovat do skupin
+                        </button>
+                        <button type="button" class="btn btn-outline-primary fw-bold py-2 d-none" id="btn-inline-reroll" title="Znovu náhodně přelosovat">
+                            <i class="mdi mdi-refresh me-1"></i> Přelosovat
+                        </button>
+                    </div>
+                    <div class="col-12 mt-1">
+                        <div id="inline-groups-alert" class="alert alert-warning py-2 mb-0 d-none" style="font-size: 0.82rem;">
+                            <i class="mdi mdi-alert-circle me-1"></i> <span id="inline-groups-alert-text"></span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Vizuální karty rozlosovaných skupin --}}
+                <div id="inline-groups-container">
+                    <div class="text-center py-4 text-muted bg-light rounded border border-dashed" id="inline-groups-placeholder">
+                        <i class="mdi mdi-account-switch-outline fs-1 d-block mb-1 text-muted"></i>
+                        <div class="fw-bold">Zatím nebylo provedeno rozlosování skupin</div>
+                        <small class="text-muted">Vyberte v tabulce hráče a klikněte na <strong>„Rozlosovat do skupin“</strong>.</small>
+                    </div>
+                    <div class="row g-3 d-none" id="inline-groups-grid">
+                        {{-- Zde JS renderuje karty skupin --}}
                     </div>
                 </div>
             </div>
@@ -447,6 +544,20 @@
         const sidebarSubmitHint = document.getElementById('sidebar-submit-hint');
         const playersDatalist = document.getElementById('players-datalist');
 
+        // Prvky pro Skupiny (Inline Group Builder)
+        const groupsConfigurationSection = document.getElementById('groups-configuration-section');
+        const inlineGroupsCountSelect = document.getElementById('inline-groups-count');
+        const btnInlineDraw = document.getElementById('btn-inline-draw');
+        const btnInlineReroll = document.getElementById('btn-inline-reroll');
+        const inlineGroupsPlaceholder = document.getElementById('inline-groups-placeholder');
+        const inlineGroupsGrid = document.getElementById('inline-groups-grid');
+        const inlineGroupsAlert = document.getElementById('inline-groups-alert');
+        const inlineGroupsAlertText = document.getElementById('inline-groups-alert-text');
+        const inlineGroupsCountBadge = document.getElementById('inline-groups-count-badge');
+        const hiddenGroupsInputs = document.getElementById('hidden-groups-inputs');
+        const btnSwitchToGroups = document.getElementById('btn-switch-to-groups');
+        let currentGroups = [];
+
         const quickAddPlayerForm = document.getElementById('quick-add-player-form');
         const quickPlayerNameInput = document.getElementById('quick-player-name');
         const quickAddErrorAlert = document.getElementById('quick-add-error-alert');
@@ -636,34 +747,54 @@
 
         // 4. Správa výběru hráčů
         function addPlayerToTournament(id) {
-            id = parseInt(id);
+            id = parseInt(id, 10);
             selectedPlayerIds.add(id);
+            if (currentGroups.length > 0) {
+                let minGroup = currentGroups[0];
+                for (let g of currentGroups) {
+                    if (g.players.length < minGroup.players.length) {
+                        minGroup = g;
+                    }
+                }
+                const player = allPlayers.find(p => p.id === id);
+                if (player && !currentGroups.some(g => g.players.some(p => p.id === id))) {
+                    minGroup.players.push(player);
+                }
+                renderInlineGroups();
+            }
             renderSidebar();
             renderTable();
         }
 
         function removePlayerFromTournament(id) {
-            id = parseInt(id);
+            id = parseInt(id, 10);
             selectedPlayerIds.delete(id);
+            if (currentGroups.length > 0) {
+                currentGroups.forEach(g => {
+                    g.players = g.players.filter(p => p.id !== id);
+                });
+                renderInlineGroups();
+            }
             renderSidebar();
             renderTable();
         }
 
         function togglePlayerSelection(id) {
-            id = parseInt(id);
+            id = parseInt(id, 10);
             if (selectedPlayerIds.has(id)) {
-                selectedPlayerIds.delete(id);
+                removePlayerFromTournament(id);
             } else {
-                selectedPlayerIds.add(id);
+                addPlayerToTournament(id);
             }
-            renderSidebar();
-            renderTable();
         }
 
         // 5. Rychlý výběr prvních N hráčů
         function selectFirstN(n) {
             selectedPlayerIds.clear();
             allPlayers.slice(0, n).forEach(p => selectedPlayerIds.add(p.id));
+            if (currentGroups.length > 0) {
+                drawGroups(true);
+            }
             renderSidebar();
             renderTable();
         }
@@ -689,6 +820,9 @@
         clearSelectionBtn.addEventListener('click', function () {
             if (confirm('Opravdu chcete odebrat všechny vybrané hráče z turnaje?')) {
                 selectedPlayerIds.clear();
+                currentGroups = [];
+                btnInlineReroll?.classList.add('d-none');
+                renderInlineGroups();
                 renderSidebar();
                 renderTable();
             }
@@ -853,18 +987,277 @@
             }
         });
 
-        // --- LOGIKA PRO FREE FORMÁTY ---
+        // --- LOGIKA PRO SKUPINY (INLINE GROUP BUILDER) ---
+        function getGroupLetter(index) {
+            let letters = '';
+            index += 1;
+            while (index > 0) {
+                const rem = (index - 1) % 26;
+                letters = String.fromCharCode(65 + rem) + letters;
+                index = Math.floor((index - 1) / 26);
+            }
+            return letters;
+        }
+
+        function drawGroups(shuffle = true) {
+            if (inlineGroupsAlert) inlineGroupsAlert.classList.add('d-none');
+            const numGroups = parseInt(inlineGroupsCountSelect.value, 10) || 2;
+            const playerIdsList = Array.from(selectedPlayerIds);
+
+            if (playerIdsList.length < numGroups * 2) {
+                if (inlineGroupsAlert && inlineGroupsAlertText) {
+                    inlineGroupsAlert.classList.remove('d-none');
+                    inlineGroupsAlertText.textContent = `Pro ${numGroups} skupin je potřeba vybrat alespoň ${numGroups * 2} hráčů (minimálně 2 do každé skupiny). Nyní máte vybráno ${playerIdsList.length} hráčů.`;
+                }
+                return false;
+            }
+
+            // Shuffle if enabled (Fisher-Yates)
+            const shuffled = [...playerIdsList];
+            if (shuffle) {
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+            }
+
+            // Balanced distribution
+            const base = Math.floor(shuffled.length / numGroups);
+            const rem = shuffled.length % numGroups;
+            const distribution = [];
+            for (let i = 0; i < numGroups; i++) {
+                distribution.push(base + (i < rem ? 1 : 0));
+            }
+
+            currentGroups = [];
+            let offset = 0;
+            for (let i = 0; i < numGroups; i++) {
+                const size = distribution[i];
+                const slice = shuffled.slice(offset, offset + size);
+                offset += size;
+
+                const letter = getGroupLetter(i);
+                currentGroups.push({
+                    order: i + 1,
+                    letter: letter,
+                    name: 'Skupina ' + letter,
+                    players: slice.map(id => allPlayers.find(p => p.id === id)).filter(Boolean)
+                });
+            }
+
+            renderInlineGroups();
+            btnInlineReroll?.classList.remove('d-none');
+            return true;
+        }
+
+        function renderInlineGroups() {
+            if (!inlineGroupsGrid || !inlineGroupsPlaceholder) return;
+
+            if (currentGroups.length === 0) {
+                inlineGroupsPlaceholder.classList.remove('d-none');
+                inlineGroupsGrid.classList.add('d-none');
+                inlineGroupsGrid.innerHTML = '';
+                if (hiddenGroupsInputs) hiddenGroupsInputs.innerHTML = '';
+                if (inlineGroupsCountBadge) inlineGroupsCountBadge.textContent = `Vybráno: ${selectedPlayerIds.size} hráčů`;
+                return;
+            }
+
+            inlineGroupsPlaceholder.classList.add('d-none');
+            inlineGroupsGrid.classList.remove('d-none');
+            inlineGroupsGrid.innerHTML = '';
+
+            // Aktualizace skrytých polí pro odeslání turnaje
+            if (hiddenGroupsInputs) {
+                hiddenGroupsInputs.innerHTML = '';
+                currentGroups.forEach((group, gIdx) => {
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'hidden';
+                    nameInput.name = `groups[${gIdx}][name]`;
+                    nameInput.value = group.name;
+                    hiddenGroupsInputs.appendChild(nameInput);
+
+                    group.players.forEach(p => {
+                        const pInput = document.createElement('input');
+                        pInput.type = 'hidden';
+                        pInput.name = `groups[${gIdx}][player_ids][]`;
+                        pInput.value = p.id;
+                        hiddenGroupsInputs.appendChild(pInput);
+                    });
+                });
+            }
+
+            let totalAssigned = 0;
+            currentGroups.forEach((group, gIdx) => {
+                totalAssigned += group.players.length;
+
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-xl-4 group-column';
+
+                let groupOptions = '';
+                currentGroups.forEach((otherGroup, oIdx) => {
+                    if (oIdx !== gIdx) {
+                        groupOptions += `<option value="${oIdx}">${escapeHtml(otherGroup.name)}</option>`;
+                    }
+                });
+
+                let playersHtml = '';
+                if (group.players.length === 0) {
+                    playersHtml = '<div class="text-center py-3 text-muted small fst-italic dropzone-empty">Přetáhněte sem hráče</div>';
+                } else {
+                    group.players.forEach(p => {
+                        const genderBadgeClass = p.gender === 'female' ? 'bg-danger text-white' : 'bg-primary text-white';
+                        const genderLabel = p.gender === 'female' ? 'Ž' : 'M';
+
+                        playersHtml += `
+                            <div class="inline-player-chip p-2 mb-2 bg-white border rounded shadow-xs d-flex justify-content-between align-items-center"
+                                 draggable="true"
+                                 data-player-id="${p.id}"
+                                 data-group-index="${gIdx}"
+                                 style="cursor: grab;">
+                                <div class="d-flex align-items-center text-truncate me-1">
+                                    <i class="mdi mdi-drag text-muted me-1 fs-5"></i>
+                                    <span class="fw-bold text-dark text-truncate me-1" style="max-width: 120px;" title="${escapeHtml(p.name)}">
+                                        ${escapeHtml(p.name)}
+                                    </span>
+                                    <span class="badge ${genderBadgeClass}" style="font-size: 0.65rem; padding: 2px 4px;">
+                                        ${genderLabel}
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <select class="form-select form-select-sm p-0 px-1 inline-move-select" data-player-id="${p.id}" data-from-group="${gIdx}" style="width: auto; font-size: 0.72rem; height: 24px;" title="Přesunout do jiné skupiny">
+                                        <option value="" disabled selected>Přesunout...</option>
+                                        ${groupOptions}
+                                    </select>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                col.innerHTML = `
+                    <div class="card border border-1 shadow-sm h-100">
+                        <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark group-title">
+                                <i class="mdi mdi-view-grid-outline text-primary me-1"></i>${escapeHtml(group.name)}
+                            </span>
+                            <span class="badge ${group.players.length >= 2 ? 'bg-primary' : 'bg-danger'} rounded-pill group-count">
+                                ${group.players.length} ${group.players.length === 1 ? 'hráč' : (group.players.length >= 2 && group.players.length <= 4 ? 'hráči' : 'hráčů')}
+                            </span>
+                        </div>
+                        <div class="card-body p-2 group-dropzone bg-light bg-opacity-25" data-group-index="${gIdx}">
+                            ${playersHtml}
+                        </div>
+                    </div>
+                `;
+
+                // Drag & Drop listenery
+                const dropzone = col.querySelector('.group-dropzone');
+
+                dropzone.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+
+                dropzone.addEventListener('dragleave', function () {
+                    this.classList.remove('drag-over');
+                });
+
+                dropzone.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    const rawData = e.dataTransfer.getData('text/plain');
+                    if (!rawData) return;
+                    try {
+                        const data = JSON.parse(rawData);
+                        const pId = parseInt(data.playerId, 10);
+                        const fromGroupIdx = parseInt(data.fromGroup, 10);
+                        const toGroupIdx = gIdx;
+
+                        if (fromGroupIdx !== toGroupIdx) {
+                            movePlayerBetweenGroups(pId, fromGroupIdx, toGroupIdx);
+                        }
+                    } catch (err) {
+                        console.error('Drop parse error:', err);
+                    }
+                });
+
+                // Listenery pro chipy hráčů
+                col.querySelectorAll('.inline-player-chip').forEach(chip => {
+                    chip.addEventListener('dragstart', function (e) {
+                        this.classList.add('is-dragging');
+                        e.dataTransfer.setData('text/plain', JSON.stringify({
+                            playerId: this.getAttribute('data-player-id'),
+                            fromGroup: this.getAttribute('data-group-index')
+                        }));
+                    });
+
+                    chip.addEventListener('dragend', function () {
+                        this.classList.remove('is-dragging');
+                    });
+                });
+
+                // Select pro přesun hráče
+                col.querySelectorAll('.inline-move-select').forEach(select => {
+                    select.addEventListener('change', function () {
+                        const targetGIdx = parseInt(this.value, 10);
+                        const pId = parseInt(this.getAttribute('data-player-id'), 10);
+                        const fromGIdx = parseInt(this.getAttribute('data-from-group'), 10);
+                        if (!isNaN(targetGIdx) && targetGIdx !== fromGIdx) {
+                            movePlayerBetweenGroups(pId, fromGIdx, targetGIdx);
+                        }
+                    });
+                });
+
+                inlineGroupsGrid.appendChild(col);
+            });
+
+            if (inlineGroupsCountBadge) {
+                inlineGroupsCountBadge.textContent = `Rozlosováno: ${totalAssigned} hráčů v ${currentGroups.length} skupinách`;
+            }
+        }
+
+        function movePlayerBetweenGroups(playerId, fromGroupIdx, toGroupIdx) {
+            if (!currentGroups[fromGroupIdx] || !currentGroups[toGroupIdx]) return;
+
+            const pIdx = currentGroups[fromGroupIdx].players.findIndex(p => p.id === playerId);
+            if (pIdx === -1) return;
+
+            const [player] = currentGroups[fromGroupIdx].players.splice(pIdx, 1);
+            currentGroups[toGroupIdx].players.push(player);
+
+            renderInlineGroups();
+        }
+
+        btnInlineDraw?.addEventListener('click', () => drawGroups(true));
+        btnInlineReroll?.addEventListener('click', () => drawGroups(true));
+        inlineGroupsCountSelect?.addEventListener('change', function () {
+            if (currentGroups.length > 0) {
+                drawGroups(true);
+            }
+        });
+
+        btnSwitchToGroups?.addEventListener('click', function () {
+            if (tournamentFormatSelect) {
+                tournamentFormatSelect.value = 'groups';
+                handleFormatChange();
+                groupsConfigurationSection?.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        // --- LOGIKA PRO FORMÁTY TURNAJE ---
         const freeFormats = ['free_oneway_elimination', 'free_double_elimination'];
 
         function handleFormatChange() {
             if (!tournamentFormatSelect) return;
             const currentFormat = tournamentFormatSelect.value;
             const isFree = freeFormats.includes(currentFormat);
+            const isGroups = currentFormat === 'groups';
 
             if (isFree) {
                 if (freeBracketSizeWrapper) freeBracketSizeWrapper.classList.remove('d-none');
                 if (freeEliminationInfoCard) freeEliminationInfoCard.classList.remove('d-none');
                 if (standardPlayerSelectionSection) standardPlayerSelectionSection.classList.add('d-none');
+                if (groupsConfigurationSection) groupsConfigurationSection.classList.add('d-none');
                 if (submitBtnRight) submitBtnRight.innerHTML = '<i class="mdi mdi-play-circle-outline me-1"></i> Vytvořit turnaj a přejít k nasazení';
                 if (sidebarSubmitHint) sidebarSubmitHint.textContent = 'Ve formátu FREE budete hráče nasazovat přímo v pavouku.';
                 if (sidebarCountText) sidebarCountText.textContent = 'FREE formát';
@@ -883,10 +1276,21 @@
                     if (infoTitle) infoTitle.textContent = 'FREE Elimination — Interaktivní nasazení v pavouku';
                     if (infoDesc) infoDesc.innerHTML = 'Ve formátu <strong>FREE Elimination</strong> hráče nepřiřazujete předem. Zvolte velikost pavouka (8, 16 nebo 32 pozic) v horním formuláři a klikněte na tlačítko <strong>„Vytvořit turnaj a přejít k nasazení“</strong>. Hráče budete do jednotlivých slotů 1. kola dosazovat interaktivně přímo v rozhraní pavouka s automatickým vyhodnocením volných losů (BYE).';
                 }
+            } else if (isGroups) {
+                if (freeBracketSizeWrapper) freeBracketSizeWrapper.classList.add('d-none');
+                if (freeEliminationInfoCard) freeEliminationInfoCard.classList.add('d-none');
+                if (standardPlayerSelectionSection) standardPlayerSelectionSection.classList.remove('d-none');
+                if (groupsConfigurationSection) groupsConfigurationSection.classList.remove('d-none');
+                if (submitBtnRight) submitBtnRight.innerHTML = '<i class="mdi mdi-play-circle-outline me-1"></i> Založit skupinový turnaj';
+                const minNeed = (parseInt(inlineGroupsCountSelect.value, 10) || 2) * 2;
+                if (sidebarSubmitHint) sidebarSubmitHint.textContent = `Pro turnaj se skupinami vyberte alespoň ${minNeed} hráčů a rozlosujte je.`;
+                renderSidebar();
+                renderInlineGroups();
             } else {
                 if (freeBracketSizeWrapper) freeBracketSizeWrapper.classList.add('d-none');
                 if (freeEliminationInfoCard) freeEliminationInfoCard.classList.add('d-none');
                 if (standardPlayerSelectionSection) standardPlayerSelectionSection.classList.remove('d-none');
+                if (groupsConfigurationSection) groupsConfigurationSection.classList.add('d-none');
                 if (submitBtnRight) submitBtnRight.innerHTML = '<i class="mdi mdi-play-circle-outline me-1"></i> Založit turnaj a rozlosovat';
                 if (sidebarSubmitHint) sidebarSubmitHint.textContent = 'Pro turnaj vyberte alespoň 2 hráče (ideálně 8, 16 nebo 32).';
                 renderSidebar();
@@ -903,15 +1307,46 @@
 
         // Validace při odeslání hlavního formuláře turnaje
         document.getElementById('tournament-form').addEventListener('submit', function (e) {
-            if (tournamentFormatSelect && freeFormats.includes(tournamentFormatSelect.value)) {
+            const currentFormat = tournamentFormatSelect ? tournamentFormatSelect.value : '';
+
+            if (freeFormats.includes(currentFormat)) {
                 hiddenInputsContainer.innerHTML = '';
+                if (hiddenGroupsInputs) hiddenGroupsInputs.innerHTML = '';
                 return true;
-            } else {
-                if (selectedPlayerIds.size < 2) {
-                    e.preventDefault();
-                    alert('Pro založení turnaje musíte vybrat minimálně 2 hráče.');
-                    return false;
+            }
+
+            if (currentFormat === 'groups') {
+                const numGroups = parseInt(inlineGroupsCountSelect.value, 10) || 2;
+                if (currentGroups.length === 0) {
+                    if (selectedPlayerIds.size < numGroups * 2) {
+                        e.preventDefault();
+                        alert(`Pro ${numGroups} skupin musíte vybrat minimálně ${numGroups * 2} hráčů (alespoň 2 hráče na skupinu). Nyní máte vybráno ${selectedPlayerIds.size}.`);
+                        return false;
+                    }
+                    const ok = drawGroups(true);
+                    if (!ok) {
+                        e.preventDefault();
+                        return false;
+                    }
                 }
+
+                // Kontrola minimálního počtu 2 hráčů v každé skupině
+                for (let g of currentGroups) {
+                    if (g.players.length < 2) {
+                        e.preventDefault();
+                        alert(`Skupina "${g.name}" má méně než 2 hráče. Každá skupina musí obsahovat minimálně 2 hráče.`);
+                        return false;
+                    }
+                }
+
+                renderInlineGroups();
+                return true;
+            }
+
+            if (selectedPlayerIds.size < 2) {
+                e.preventDefault();
+                alert('Pro založení turnaje musíte vybrat minimálně 2 hráče.');
+                return false;
             }
         });
 

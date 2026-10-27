@@ -43,7 +43,7 @@
 * **PHP:** `>= 8.1`
 * **Composer**
 * **Node.js & NPM**
-* **Databáze:** MySQL / MariaDB / SQLite
+* **Databáze:** SQLite
 * **PHP rozšíření:** `PDO`, `Mbstring`, `OpenSSL`, `Tokenizer`, `XML`, `Ctype`, `JSON`
 
 ---
@@ -76,16 +76,22 @@
    ```bash
    php artisan key:generate
    ```
+5. **Nastavení SQLite databáze**
+   Vytvořte prázdný soubor databáze v adresáři `database/`:
+   
+   * **Linux / macOS:**
+     ```bash
+     touch database/database.sqlite
+     ```
+   * **Windows (PowerShell):**
+     ```powershell
+     New-Item database/database.sqlite -ItemType File
+     ```
 
-5. **Nastavení databáze**
-   Otevřete soubor `.env` a nastavte připojení k vaší databázi:
+   V `.env` souboru upravte nastavení databáze následovně:
    ```env
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=resulto
-   DB_USERNAME=root
-   DB_PASSWORD=
+   DB_CONNECTION=sqlite
+   # Ostatní řádky DB_* (DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD) můžete zakomentovat nebo smazat.
    ```
 
 6. **Spuštění migrací a seederů**
